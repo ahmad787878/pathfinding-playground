@@ -367,3 +367,180 @@ class PGrid extends HTMLElement {
 
     this.shadowRoot.append(s);
   }
+
+  mkGrid() {
+    const g = el("g", { id: "grid" });
+    this.sv.append(g);
+
+    for (let r = 0; r < RN; r++) {
+      for (let c = 0; c < CN; c++) {
+        const cell = el("rect", {
+          x: GX + c * CS + 1,
+          y: GY + r * CS + 1,
+          width: CS - 2,
+          height: CS - 2,
+          rx: 3,
+          class: "cell"
+        });
+
+        this.cs[r][c] = cell;
+        g.append(cell);
+        this.paint(r, c);
+
+        cell.addEventListener("pointerdown", e => this.onDown(e, r, c));
+        cell.addEventListener("pointerenter", () => this.onEnter(r, c));
+      }
+    }
+
+    this.pl = el("polyline", { class: "path-line overlay", points: "" });
+    this.sd = el("circle", { r: CS / 2 - 3, fill: COL.start, class: "dot overlay" });
+    this.ed = el("circle", { r: CS / 2 - 3, fill: COL.end, class: "dot overlay" });
+
+    this.tb = el("g", { class: "toast overlay" });
+
+    this.tb.append(
+      el("rect", {
+        x: 66,
+        y: 18,
+        width: 372,
+        height: 34,
+        rx: 17,
+        class: "toast-bg"
+      })
+    );
+
+    this.tt = txt(this.tb, "", 252, 36, {
+      class: "toast-text",
+      "text-anchor": "middle",
+      "dominant-baseline": "middle"
+    });
+
+    this.sv.append(this.pl, this.sd, this.ed);
+    this.dots();
+  }
+  ctr(r, c) {
+    return{
+      x: GX + c * CS + CS / 2,
+      y: GY + r * CS + CS / 2
+    };
+  }
+
+  dots() {
+    const a = this.ctr(this.st.r, this.st.c);
+    const b = this.ctr(this.en.r, this.en.c);
+  
+  this.sd.setAttribute("cx", a.x);
+  this.sd.setAttribute("cy", a.y);
+  this.ed.setAttribute("cx", b.x);
+  this.ed.setAttribute("cy", b.y);
+}
+toast(m) {
+  this.tt.textContent = m;
+  this.tb.classList.add("show");
+
+  clearTimeout(this.tm);
+  this.tm = setTimeout(() => this.tb.classList.remove("show"), 2500);
+}
+say(kind, n="", name="") {
+  this.toast(pick(MSG[kind]).replace("{n}", n).replace("{name}", name));
+}
+onDown(e, r, c) {
+  if(this.rum || e.button !== 0) return;
+
+  e.preventDefault();
+  this.clrPath();
+  this.dn = true;
+
+  if(this.isS(r, c)) this.dg = "st";
+  else if(this.isE(r, c)) this.dg = "en";
+  else this,draw(r, c);
+}
+
+ onEnter(r, c) {
+    if (!this.dn || this.run) return;
+
+if (this.dg) this.move(this.dg, r, c);
+    else this.draw(r, c);
+  }
+
+isS(r, c) {
+    return this.st.r === r && this.st.c === c;
+  }
+
+isE(r, c) {
+    return this.en.r === r && this.en.c === c;
+  }
+
+draw(r, c) {
+    if (this.isS(r, c) || this.isE(r, c)) return;
+
+const v = this.md === "erase" ? "empty" : this.md;
+
+if (this.gr[r][c] === v) return;
+this.gr[r][c] = v;
+    this.paint(r, c);
+  }
+
+move(kind, r, c) {
+    if (this.gr[r][c] === "wall") return;
+    if (which === "st" && this.isE(r, c)) return;
+    if (which === "en" && this.isS(r, c)) return;
+
+    const old = { ...this[which] };
+    if (old.r== r&& old.c === c) return;
+
+    this[which] = { r, c };
+    this.paint(old.r, old.c);
+    this.paint(r, c);
+    this.dots();
+  }
+
+  paint(r, c) {
+    let col = COL[this.gr[r][c]];
+    if (this.mk[r][c]) col=COL[this.mk[r][c]];
+    else this.cs[r][c].setAttribute("opacity", 1);
+    if (this.isS(r, c) || this.isE(r, c)) col = COL.empty;
+    this.cs[r][c].setAttribute("fill", col);
+  }
+  mkCtrl() {
+    this.pn = el("g", { id: "panel" });
+    this.sv.append(this.pn);
+
+    this.pn.append(
+      el("rect", {x: 505, y: 10, width: 205, height: 295, rx: 12, class: "frame" })
+    );
+     txt(this.pn, "Pathfinding Playground", 515, 34, { class: "title" });
+    txt(this.pn, "ALGORITHM", 515, 56, { class: "label" });
+
+    this.ab = {};
+    ALG.forEach(([k, name], i) => {
+      this.ab[k] = this.btn(this.pn, 513 + i * 64, 62, 60, 24, name, () => this.setAlgo(k), 10.5);
+    });
+
+    txt(this.pn, "DRAW", 515, 104, { class: "label" });
+
+    this.mb = {};
+    [["wall", "Wall"], ["mud", "Mud"], ["erase", "Erase"]].forEach(([k, name], i) => {
+      this.mb[k] = this.btn(this.pn, 513 + i * 64, 110, 60, 24, name, () => this.setMode(k), 10.5);
+    });
+
+  txt(this.pn, "SPEED", 515, 152, { class: "label" });
+    this.spb = {};
+    [["slow", "Slow", 60], ["normal", "Normal", 20], ["fast", "Fast", 5]].forEach(([k, name, ms], i) => {
+      this.spb[k] = this.btn(this.pn, 513 + i * 64, 158, 60, 24, name, () => this.setSpeed(k, ms), 10.5);
+    });
+
+    this.btn(this.pn, 513, 196, 124, 32, "Run", () => this.go(), 13, "primary");
+    this.btn(this.pn, 641, 196, 60, 32, "Race 🏁", () => this.race(), 11, "race");
+    this.btn(this.pn, 513, 234, 60, 26, "Maze", () => this.maze(), 10);
+    this.btn(this.pn, 577, 234, 60, 26, "Clear path", () => this.clrPath(), 9);
+    this.btn(this.pn, 641, 234, 60, 26, "Clear walls", () => this.clrWalls(), 9);
+
+    txt(this.pn, "Walls block movement.", 515, 278, { class: "small" });
+    txt(this.pn, "Mud costs 5 to cross. Drag the dots.", 515, 293, { class: "small" });
+
+    this.act(this.ab, this.al);
+    this.act(this.mb, this.md);
+    this.act(this.spb, this.sm);
+
+  }
