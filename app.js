@@ -8,15 +8,7 @@ const GX = 10;
 const GY = 10;
 
 const COL = {
-  empty: "#1e293b",
-  wall: "#64748b",
-  mud: "#78350f",
-  start: "#22c55e",
-  end: "#f43f5e",
-  visited: "#2dd4bf",
-  path: "#0f766e"
-};
-
+  empty: "#1e293b", wall: "#64748b", mud: "#78350f", start: "#22c55e", end: "#f43f5e", visited: "#2dd4bf", path: "#0f766e"};
 const D4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
 const ALG = [
@@ -123,11 +115,7 @@ class PGrid extends HTMLElement {
     this.css();
 
     this.sv = el("svg", {
-      viewBox: "0 0 720 520",
-      width: "100%",
-      height: "520",
-      role: "application",
-      "aria-label": "Pathfinding Playground"
+      viewBox: "0 0 720 520", width: "100%", height: "520", role: "application", "aria-label": "Pathfinding Playground"
     });
 
     this.shadowRoot.append(this.sv);
@@ -542,5 +530,127 @@ move(kind, r, c) {
     this.act(this.ab, this.al);
     this.act(this.mb, this.md);
     this.act(this.spb, this.sm);
-
   }
+  btn(parent, x, y, w, h, name, fn, size = 11, kind = "") {
+    const g = el("g", {
+      class: kind ? `btn ${kind}` : "btn",
+      role: "button",
+      tabindex: 0,
+      "aria-label": name
+    });
+    const rect = el("rect", { x, y, width: w, height: h, rx: 7 });
+    const lab = el("text", {
+      x: x + w / 2,
+      y: y + h / 2,
+      "text-anchor": "middle",
+      "dominant-baseline": "middle",
+      "font-size": size
+    });
+    lab.textContent = name;
+    g.append(rect, lab);
+    g.addEventListener("click", fn);
+    g.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    fn();
+    }
+    });
+    parent.append(g);
+    return g;
+  }
+  act(btns, sel) {
+    for (const k in btns) btns[k].classList.toggle("active", k === sel);
+  }
+  setAlgo(a) {
+    this.al = a;
+    this.act(this.ab, a);
+    this.upLearn();
+  }
+  setMode(m) {
+    this.md = m;
+    this.act(this.mb, m);
+  }
+  setSpeed(name, ms) {
+    this.sm = name;
+    this.ms = ms;
+    this.act(this.spb, name);
+  }
+  mkStats() {
+    this.sts = el("g", { id: "stats" });
+    this.sv.append(this.sts);
+    this.sts.append(
+    el("rect", { x: 505, y: 315, width: 205, height: 295, rx: 12, class: "frame" }));
+    txt(this.sts, "STATS", 515, 335, { class: "label" });
+    this.stx=txt(this.sts, "Algorithm: ", 700, 355, { class: "small", "text-anchor": "end" });
+
+    const card = (x, name) => {
+      this.sts.append(el("rect", { x, y: 343, width: 60, height: 52, rx: 8, class: "card" }));
+      const v=txt(this.sts, "-", x + 30, 368, { class: "big", "text-anchor": "middle" });
+      return v;
+    };
+    this.ex = card(513, "explored");
+    this.st = card(577, "steps");
+    this.ct = card(641, "cost");
+  }
+  mkLearn() {
+    this.lr = el("g", { id: "learn" });
+    this.sv.append(this.lr);
+    this.lr.append(el("rect", { x: 505, y: 415, width: 205, height: 95, rx: 12, class: "frame" }));
+    txt(this.lr, "HOW IT WORKS", 515, 436, { class: "label" });
+    this.lt =el("text", {x: 5151, y: 458, class: "learn-text"});
+    this.lr.append(this.lt);
+    this.upLearn();
+  }
+  upLearn() {
+    const L={
+      bfs:
+      ["Spreads out one step at a time,", "like ripples in water. Finds the", "fewest steps, but ignores mud."],
+      dijkstra:
+      ["Explores the cheapest spot", "reached so far. Walks around","mud when that costs less."],
+      astar:
+      ["Like Dijkstra, but  guesses how", "far the goal is and head toward", "it. Often checks fewer squares"]
+    };
+    this.lt.textContent="";
+    L[this.al].forEach((line, i) => {
+      const t=el("tspan", {x: 515, dy:i===0?0:16});
+      t.textContent = line;
+      this.lt.append(t);
+    });
+  }
+  mkBoard(){
+    this.bd = el("g", { class: "scoreboard overlay" });
+    this.bd.append(el("rect", { x: 92, y: 150, width: 320, height: 200, rx: 16, class: "board-bg" }));
+    txt(this.bd, "Race results", 252, 182, { class: "board-title", "text-anchor": "middle" });
+
+    this.br=[0, 1, 2].map(i => {
+      const y = 198 + i * 48;
+      const bg = el("rect", { x: 108, y, width: 288, height: 40, class: "board-row" });
+    this.bd.append(bg);
+    const name = txt(this.bd, "", 122, y + 25, { class: "board-name" });
+    const info = txt(this.bd, "", 384, y + 25, { class: "board-info", "text-anchor": "end" });
+    return { bg, name, info };
+  });
+  this.sv.append(this.bd, this.tb);
+  }
+  showBd(scores) {
+    const rk = [...scores].sort((a, b) => {
+      if (a.found !== b.found) return a.found ? -1 : 1;
+      if (a.cost !== b.cost) return a.cost - b.cost;
+      return a.explored - b.explored;
+    });
+    rk.forEach((s, i) => {
+      const row = this.br[i];
+      const winner = i === 0 && s.found;
+      row.name.textContent = `${["🥇", "🥈", "🥉"][i]} ${s.name}`;
+      row.info.textContent = s.found
+        ? `${s.explored} explored · cost ${s.cost}`
+        : "no path";
+      row.bg.classList.toggle("winner", win);
+      row.name.classList.toggle("board-text-dark", win);
+      row.info.classList.toggle("board-text-dark", win);
+    });
+     this.bd.classList.add("show");
+     if (rk[0].found) this.say("raceWin", "", rk[0].name);
+    else this.say("raceNone");
+  }
+  
