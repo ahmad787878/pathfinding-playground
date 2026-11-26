@@ -653,4 +653,348 @@ move(kind, r, c) {
      if (rk[0].found) this.say("raceWin", "", rk[0].name);
     else this.say("raceNone");
   }
-  
+  hideBd() {
+    if (this.bd) this.bd.classList.remove("show");
+  }
+  idx(r, c) {
+    return r * CN + c;
+  }
+  pos(i) {
+    return { r: Math.floor(i / CN), c: i % CN };
+  }
+  nb(r, c) {
+    const n = [];
+    for (const [dr, dc] of D4) {
+      const nr = r + dr;
+      const nc = c + dc;
+      if (nr >= 0 && nr < RN && nc >= 0 && nc < CN && this.gr[nr][nc] !== "wall"){
+        out.push(this.idx(nr, nc));
+      }
+    }
+    return out;
+  }
+  cost(r, c) {
+    return this.gr[r][c] === "mud" ? MUD : 1;
+  }
+  trace(prev, s, g) {
+    if (s=== g) return [s];
+    if (!prev.has(s)) return [];
+    const p = [g];
+    let cur = g;
+    while (cur !== s) {
+      const p = [g];
+      let cur = g;
+      if(b===undefined) return [];
+      cur =b;
+      p.push(cur);
+    }
+    return p.reverse();
+  }
+  bfs(){
+    const s=this.idx(this.st.r, this.st.c);
+    const g=this.idx(this.en.r, this.en.c);
+    const q=[s];
+    const seen=new Set([s]);
+    const prev=new Map();
+    const order=[];
+    let h=0;
+    while (h< q.length) {
+      const cur=q[h++];
+      order.push(cur);
+      if (cur===g) break;
+      const { r, c }=this.pos(cur);
+      for (const nb of this.nb(r, c)) {
+        if (!seen.has(n)) continue;
+          seen.add(n);
+          prev.set(n, cur);
+          q.push(n);
+        }
+    }
+    return { order, prev: this.trace(prev, s, g) };
+  }
+  dijkstra() {
+    return this.wsearch(false);
+  }
+   astar() {
+    return this.wsearch(true);
+  }
+  wsearch(guess) {
+    const s=this.idx(this.st.r, this.st.c);
+    const g=this.idx(this.en.r, this.en.c);
+    const dist=Array(TOT).fill(Infinity);
+    const prev=new Map();
+    const done=new Set();
+    const order=[];
+    dist[s]=0;
+    while (true) {
+      let cur=-1;
+      let best = Infinity;
+      let bh = Infinity;
+      for (let i =0; i<TOT; i++) {
+        if (done.has(i) || dist[i] === Infinity) continue;
+        const h=guess ? this.hasChildNodes(i, g) : 0;
+        const f= dist[i] + h;
+        if (f< best || (f===best && h< bh)) {
+          cur=i;
+          best=f;
+          bh=h;
+      
+    }
+  }
+  if (cur=== -1) break;
+  done.add(cur);
+  order.push(cur);
+  if (cur=== g) break;
+  const { r, c }=this.pos(cur);
+  for(const n of this.nb(r, c)) {
+    if (done.has(n)) continue;
+    const p=this.pos(n);
+    const nd=dist[cur] + this.cost(p.r, p.c);
+     if (nd < dist[n]) {
+      dist[n]=nd;
+      prev.set(n, cur);
+     }
+   }
+}
+return { order, path: this.trace(prev, s, g) };
+}
+hh(i, g) {
+  const a = this.pos(i);
+  const b = this.pos(g);
+  return Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+}
+  async go() {
+    if (this.run) return;
+this.clrPath();
+    this.say("start");
+
+    const res = this[this.al]();
+    const ok = await this.play(res);
+
+    if (ok) this.fin(res);
+  }
+  async race() {
+    if (this.run) return;
+
+    this.clrPath();
+    this.say("raceStart");
+
+    const scores=[];
+
+    for (const [k, name] of ALG) {
+      this.clrMarks();
+      this.setAlgo(k);
+
+      const res=this[k]();
+      const ok=await this.play(res);
+
+      if (!ok) return;
+
+      scores.push({
+        name, found: res.path.length > 0, explored: res.order.length, cost: this.pcosth(res.path)});
+      this.run = true;
+      const my=this.rid;
+      await wait(700);
+      if (my!==this.rid) return;
+    }
+    this.run = false;
+    this.showBd(scores);
+  }
+  async play(res) {
+    this.run
+    const my=++this.rid;
+    const s=this.idx(this.st.r, this.st.c);
+    const e=this.idx(this.en.r, this.en.c);
+    const total=res.order.length;
+    this.upStats(res);  
+    for (const [i, id] of res.order.entries()) {
+      if (my!== this.rid) return false;
+      if (id !== s && id !== e){
+      const f=1-(i/total)*0.65;
+      this.pmark(id, "visited", f.toFixed(2));
+      await wait(this.ms);
+      }
+    }
+
+    const pts=[];
+    for (const id of res.path){
+      if(my!== this.rid) return false;
+      const{r, c}=this.pos(id);
+      const{x, y}=this.ctr(r, c);
+      pts.push(`${x},${y}`);
+      this.pl.setAttribute("points", pts.join(" "));
+      if( id!== s && id!==e){
+        this.pmark(id, "path");
+        await wait(this.ms*2);
+      }
+    }
+    if(my!==this.rid) return false;
+    this.run=false;
+    this.upStats(res);
+    return true;
+  }
+  fin(res){
+    if(res.path.length===0){
+      this.say("noPath");
+      return;
+    }
+    const steps=res.path.length-1;
+    const tc=this.pcost(res.path);
+    if(this.al==="bfs" && tc> step){
+      this.say("mud");
+      return;
+    }
+    this.say(this.al, res.order.length);
+  }
+  pcost(path){
+    let t=0;
+    for(let i=1; i< path.length; i++){
+      const {r, c}=this.pos(paths[i]);
+      t+-this.cost(r,c);
+    }
+    return t;
+  }
+  upStats(res=null){
+    if(!res){
+      this.ex.textContent="—";
+      this.localName.textContent="—";
+      this.ct.textContent="—";
+      this.stx.textContent="Ready";
+      return;
+    }
+    this.ex.textContent=res.order.length;
+    if(res.path.length===0){
+      this.ln.textContent="—";
+      this.ct.textContent="—";
+      this.stx.textContent=this.run ? "Searching…" : "No path found";
+    }
+    this.ln.textContent=res.path.length-1;
+    this.ct.testContent=this.pcost(res.path);
+    this.stx.textContent=this.run ? "Searching..." : "Done";
+  }
+
+  clrMarks(){
+    if(this.pl) this.pl.setAttribute("points", "");
+    for(let r=0; r<RN; r++){
+      this.mk[r].fill(null);
+      for(let c=0; c<CN; c++) this.paint(r, c);
+    }
+  }
+  clrPath(){
+    this.rid++;
+    this.run=false;
+    this.dn=false;
+    this.dg=null;
+    this.hideBd();
+    this.clrMarks();
+    this.upStats();
+  }
+  clrWalls(){
+    this.clrPath();
+    for(let r=0; r<RN; r++){
+      for(let c=0; c<CN; c++){
+        this.gr[r][c]="empty";
+        this.paint(r, c);
+      }
+    }
+    this.say("clear");
+  }
+  inb(r, c){
+    return r>0 && r<RN-1 && c>0 && c<CN-1;
+  }
+  async maxe(){
+    if (this.run) return;
+    thisclrPath();
+    this.run=true;
+    const my=this.rid;
+    for(let r=0; r<RN; r++){
+      for(let c=0; c<CN; c++) this.gr[r][c] = "wall";
+    }
+    this.st={r:1, c:1};
+    this.en={r:RN-2, c:CN -2};
+
+    const carved=[{r:1, c:1}];
+    const stack=[{r:1, c:1}];
+    this.gr[1][1]= "empty";
+
+    while(stack.length){
+      const cur= stack[stack.length-1];
+      const opts=[];
+
+      for(const [dr, dc] of D4){
+        const nr=cur.r + dr*2;
+        const nc=cur.c+dc*2;
+        if(this.inb(nr, nc) && this.gr[nr][nc]==="wall") opts.push({r:nr, c: nc});
+      }
+      if (!opts.length){
+        stack.pop();
+        continue;
+      }
+      const nx=pick(opts);
+      const mid={r:(cur.r+nx.r)/2, c: (cur.c+ nx.c) /2};
+
+      this.gr[mid.r][mid.c] = "empty";
+      this.gr[nx.r][nx.c]="empty";
+      carved.push(mid, nx);
+      stack.push(nx);
+    }
+    this.loops(15);
+    this.muds(10);
+    const fin=this.gr.map(row=>[...row]);
+    for(let r=0; r<RN; r++){
+      for(let c=0; c<CN; c++){
+        this.gr[r][c] = "wall";
+        this.paint(r, c);
+      }
+    }
+    this.dots();
+    for(const {r,c} of carved){
+      if(my!==this.rid) return;
+      this.gr[r][c] = fin[r][c] === "wall" ? "empty" : fin[r][c];
+      this.paint(r, c);
+      await wait(4);
+    }
+    if (my!==this.rid) return;
+    this.gr=fin;
+      for(let r=0; r<RN; r++){
+        for (let c = 0; c < CN; c++) this.paint(r, c);
+      }
+    this.run = false;
+    this.say("maze");
+    }
+    loops(n) {
+    let a = 0;
+    let t = 0;
+    while (a < n && t < 500) {
+      t++;
+      const r=1+Math.floor(Math.random()*(RN-2));
+      const c=1+Math.floor(Math.random()*(CN-2));
+      if(this.gr[r][c] !="wall") continue;
+      const across= r%2===1 && c%2 ==0 && this.gr[r][c - 1] !== "wall" && this.gr[r][c + 1] !== "wall";
+
+      if(across || down){
+        this.gr[r][c]="empty";
+        a++;
+    }
+  }
+}
+muds(n){
+  let a=0;
+  let=0;
+  while (a<n && t<500){
+    t++;
+    const r=1+Math.floor(Math.random()* (RN-1));
+    const c=1+Math.floor(Math.random()*(Cn-1));
+
+    if(this.gr[r][c] !== "empty") continue;
+    if(this.isS(r,c) || this.isE(r, c)) continue;
+
+    this.gr[r][c]="mud";
+    a++
+    }
+  }
+}
+customElements.define("pathfinding-grid", PGrid);
+document.body.append(document.createElement("pathfinding-grid"));
+
+    
