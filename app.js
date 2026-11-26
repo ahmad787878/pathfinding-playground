@@ -433,7 +433,7 @@ say(kind, n="", name="") {
   this.toast(pick(MSG[kind]).replace("{n}", n).replace("{name}", name));
 }
 onDown(e, r, c) {
-  if(this.rum || e.button !== 0) return;
+  if(this.run || e.button !== 0) return;
 
   e.preventDefault();
   this.clrPath();
@@ -441,7 +441,7 @@ onDown(e, r, c) {
 
   if(this.isS(r, c)) this.dg = "st";
   else if(this.isE(r, c)) this.dg = "en";
-  else this,draw(r, c);
+  else this.draw(r, c);
 }
 
  onEnter(r, c) {
@@ -469,7 +469,7 @@ this.gr[r][c] = v;
     this.paint(r, c);
   }
 
-move(kind, r, c) {
+move(which, r, c) {
     if (this.gr[r][c] === "wall") return;
     if (which === "st" && this.isE(r, c)) return;
     if (which === "en" && this.isS(r, c)) return;
@@ -495,8 +495,7 @@ move(kind, r, c) {
     this.sv.append(this.pn);
 
     this.pn.append(
-      el("rect", {x: 505, y: 10, width: 205, height: 295, rx: 12, class: "frame" })
-    );
+      el("rect", { x: 505, y: 10, width: 205, height: 295, rx: 12, class: "frame" }));
      txt(this.pn, "Pathfinding Playground", 515, 34, { class: "title" });
     txt(this.pn, "ALGORITHM", 515, 56, { class: "label" });
 
@@ -581,7 +580,7 @@ move(kind, r, c) {
     this.sts.append(
     el("rect", { x: 505, y: 315, width: 205, height: 295, rx: 12, class: "frame" }));
     txt(this.sts, "STATS", 515, 335, { class: "label" });
-    this.stx=txt(this.sts, "Algorithm: ", 700, 355, { class: "small", "text-anchor": "end" });
+    this.stx = txt(this.sts, "Ready", 700, 335, { class: "small", "text-anchor": "end" });
 
     const card = (x, name) => {
       this.sts.append(el("rect", { x, y: 343, width: 60, height: 52, rx: 8, class: "card" }));
@@ -589,7 +588,7 @@ move(kind, r, c) {
       return v;
     };
     this.ex = card(513, "explored");
-    this.st = card(577, "steps");
+    this.ln = card(577, "steps");
     this.ct = card(641, "cost");
   }
   mkLearn() {
@@ -597,7 +596,7 @@ move(kind, r, c) {
     this.sv.append(this.lr);
     this.lr.append(el("rect", { x: 505, y: 415, width: 205, height: 95, rx: 12, class: "frame" }));
     txt(this.lr, "HOW IT WORKS", 515, 436, { class: "label" });
-    this.lt =el("text", {x: 5151, y: 458, class: "learn-text"});
+    this.lt = el("text", { x: 515, y: 458, class: "learn-text" });
     this.lr.append(this.lt);
     this.upLearn();
   }
@@ -640,7 +639,7 @@ move(kind, r, c) {
     });
     rk.forEach((s, i) => {
       const row = this.br[i];
-      const winner = i === 0 && s.found;
+      const win = i === 0 && s.found;
       row.name.textContent = `${["🥇", "🥈", "🥉"][i]} ${s.name}`;
       row.info.textContent = s.found
         ? `${s.explored} explored · cost ${s.cost}`
@@ -663,7 +662,7 @@ move(kind, r, c) {
     return { r: Math.floor(i / CN), c: i % CN };
   }
   nb(r, c) {
-    const n = [];
+    const out=[];
     for (const [dr, dc] of D4) {
       const nr = r + dr;
       const nc = c + dc;
@@ -677,17 +676,15 @@ move(kind, r, c) {
     return this.gr[r][c] === "mud" ? MUD : 1;
   }
   trace(prev, s, g) {
-    if (s=== g) return [s];
-    if (!prev.has(s)) return [];
-    const p = [g];
-    let cur = g;
-    while (cur !== s) {
-      const p = [g];
-      let cur = g;
-      if(b===undefined) return [];
-      cur =b;
-      p.push(cur);
-    }
+    if (!prev.has(g)) return [];
+  const p=[g];
+  let cur=g;
+  while (cur!==s) {
+    const b=prev.get(cur);
+    if (b===undefined) return [];
+    cur=b;
+    p.push(cur);
+}
     return p.reverse();
   }
   bfs(){
@@ -703,14 +700,14 @@ move(kind, r, c) {
       order.push(cur);
       if (cur===g) break;
       const { r, c }=this.pos(cur);
-      for (const nb of this.nb(r, c)) {
-        if (!seen.has(n)) continue;
+      for (const n of this.nb(r,c)) {
+        if (seen.has(n)) continue;
           seen.add(n);
           prev.set(n, cur);
           q.push(n);
         }
     }
-    return { order, prev: this.trace(prev, s, g) };
+    return { order, path: this.trace(prev, s, g) };
   }
   dijkstra() {
     return this.wsearch(false);
@@ -732,7 +729,7 @@ move(kind, r, c) {
       let bh = Infinity;
       for (let i =0; i<TOT; i++) {
         if (done.has(i) || dist[i] === Infinity) continue;
-        const h=guess ? this.hasChildNodes(i, g) : 0;
+        const h = guess ? this.hh(i, g) : 0;
         const f= dist[i] + h;
         if (f< best || (f===best && h< bh)) {
           cur=i;
@@ -791,7 +788,7 @@ this.clrPath();
       if (!ok) return;
 
       scores.push({
-        name, found: res.path.length > 0, explored: res.order.length, cost: this.pcosth(res.path)});
+        name, found: res.path.length > 0, explored: res.order.length, cost: this.pcost(res.path)});
       this.run = true;
       const my=this.rid;
       await wait(700);
@@ -801,7 +798,7 @@ this.clrPath();
     this.showBd(scores);
   }
   async play(res) {
-    this.run
+    this.run=true;
     const my=++this.rid;
     const s=this.idx(this.st.r, this.st.c);
     const e=this.idx(this.en.r, this.en.c);
@@ -840,7 +837,7 @@ this.clrPath();
     }
     const steps=res.path.length-1;
     const tc=this.pcost(res.path);
-    if(this.al==="bfs" && tc> step){
+    if (this.al==="bfs" && tc>steps) {
       this.say("mud");
       return;
     }
@@ -849,27 +846,34 @@ this.clrPath();
   pcost(path){
     let t=0;
     for(let i=1; i< path.length; i++){
-      const {r, c}=this.pos(paths[i]);
-      t+-this.cost(r,c);
+      const {r,c}=this.pos(path[i]);
+      t+=this.cost(r, c);
     }
     return t;
+  }
+  pmark(id, type, op=1) {
+    const { r, c}=this.pos(id);
+    this.mk[r][c]=type;
+    this.paint(r, c);
+    this.cs[r][c].setAttribute("opacity", op);
   }
   upStats(res=null){
     if(!res){
       this.ex.textContent="—";
-      this.localName.textContent="—";
+      this.ln.textContent = "—";
       this.ct.textContent="—";
       this.stx.textContent="Ready";
       return;
     }
     this.ex.textContent=res.order.length;
     if(res.path.length===0){
-      this.ln.textContent="—";
-      this.ct.textContent="—";
-      this.stx.textContent=this.run ? "Searching…" : "No path found";
+      this.ln.textContent = "—";
+  this.ct.textContent = "—";
+  this.stx.textContent = this.run ? "Searching…" : "No path found";
+  return;
     }
     this.ln.textContent=res.path.length-1;
-    this.ct.testContent=this.pcost(res.path);
+    this.ct.textContent = this.pcost(res.path);
     this.stx.textContent=this.run ? "Searching..." : "Done";
   }
 
@@ -902,9 +906,9 @@ this.clrPath();
   inb(r, c){
     return r>0 && r<RN-1 && c>0 && c<CN-1;
   }
-  async maxe(){
+  async maze(){
     if (this.run) return;
-    thisclrPath();
+    this.clrPath();
     this.run=true;
     const my=this.rid;
     for(let r=0; r<RN; r++){
@@ -970,8 +974,8 @@ this.clrPath();
       const r=1+Math.floor(Math.random()*(RN-2));
       const c=1+Math.floor(Math.random()*(CN-2));
       if(this.gr[r][c] !="wall") continue;
-      const across= r%2===1 && c%2 ==0 && this.gr[r][c - 1] !== "wall" && this.gr[r][c + 1] !== "wall";
-
+      const across= r%2===1 && c%2 ==0 && this.gr[r][c - 1] !== "wall" && this.gr[r][c + 1]!=="wall";
+      const down=r%2===0 && c%2===1 && this.gr[r-1][c] !== "wall" && this.gr[r+1][c]!=="wall";
       if(across || down){
         this.gr[r][c]="empty";
         a++;
@@ -980,11 +984,11 @@ this.clrPath();
 }
 muds(n){
   let a=0;
-  let=0;
+  let t=0;
   while (a<n && t<500){
     t++;
     const r=1+Math.floor(Math.random()* (RN-1));
-    const c=1+Math.floor(Math.random()*(Cn-1));
+    const c=1+Math.floor(Math.random()*(CN-1));
 
     if(this.gr[r][c] !== "empty") continue;
     if(this.isS(r,c) || this.isE(r, c)) continue;
